@@ -1,0 +1,146 @@
+# Using the OpenAI API in Python
+
+This notebook combines the API connection and `.env` tutorials into one concise workflow. It covers installing the SDK, storing credentials securely, creating a client, sending a request, and checking token usage.
+
+## 1. Install the required packages
+
+Run this cell in Jupyter. If the packages are already installed, you can skip it.
+%pip install -U openai python-dotenv
+## 2. Create a `.env` file
+
+Create a file named `.env` in the same project folder as this notebook. Add your API key:
+
+```text
+OPENAI_API_KEY=your-api-key-here
+```
+
+Do not put the actual key in a notebook cell, share it, or commit it to a repository.
+
+If you are using a compatible third-party API provider, consult that provider's documentation for its API key, base URL, and supported model. You may optionally add its base URL to `.env`:
+
+```text
+OPENAI_BASE_URL=https://your-provider.example/v1
+```
+
+For the standard OpenAI API, leave `OPENAI_BASE_URL` unset.
+## 3. Protect the `.env` file
+
+If your project uses Git, add `.env` to `.gitignore` so the secret is not committed.
+from pathlib import Path
+
+gitignore_path = Path(".gitignore")
+ignored_entry = ".env"
+
+existing = gitignore_path.read_text(encoding="utf-8").splitlines() if gitignore_path.exists() else []
+
+if ignored_entry not in existing:
+    with gitignore_path.open("a", encoding="utf-8") as file:
+        if existing and not gitignore_path.read_text(encoding="utf-8").endswith("\n"):
+            file.write("\n")
+        file.write(f"{ignored_entry}\n")
+
+print(".env is listed in .gitignore")
+## 4. Load environment variables and create the client
+
+`python-dotenv` reads values from `.env` into the process environment. The OpenAI Python SDK reads `OPENAI_API_KEY` automatically when creating `OpenAI()`.
+
+The optional `OPENAI_BASE_URL` lets you configure a compatible endpoint without changing the notebook code.
+import os
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()
+
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError(
+        "OPENAI_API_KEY was not found. Check that your .env file exists "
+        "and contains OPENAI_API_KEY."
+    )
+
+base_url = os.getenv("OPENAI_BASE_URL")
+
+client_options = {"api_key": api_key}
+if base_url:
+    client_options["base_url"] = base_url
+
+client = OpenAI(**client_options)
+
+print("API client initialized.")
+## 5. Send your first request
+
+This example uses the Chat Completions interface. Replace the model name with a model available to your account or compatible API provider.
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Explain what an API is in two sentences."}
+    ],
+)
+
+answer = response.choices[0].message.content
+print(answer)
+## 6. Access the response
+
+The response object contains the generated message and other request information.
+# Generated text
+print(response.choices[0].message.content)
+
+# The model used for the response
+print(response.model)
+## 7. Check token usage
+
+Token usage is included in the response when supported by the API.
+usage = response.usage
+
+if usage is not None:
+    print(f"Input tokens:  {usage.prompt_tokens}")
+    print(f"Output tokens: {usage.completion_tokens}")
+    print(f"Total tokens:  {usage.total_tokens}")
+else:
+    print("Token usage was not returned for this request.")
+## 8. Reuse the client for additional requests
+
+Create the client once, then reuse it for multiple requests. For example:
+question = "What is the difference between a library and an API?"
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": question}
+    ],
+)
+
+print(response.choices[0].message.content)
+## 9. Project structure
+
+A simple project can be organized as follows:
+
+```text
+api-project/
+├── 00_openai_api_tutorial.ipynb
+├── .env
+└── .gitignore
+```
+
+Example `.gitignore`:
+
+```text
+.env
+```
+
+For team projects, you can provide a `.env.example` file containing variable names but no real credentials:
+
+```text
+OPENAI_API_KEY=
+OPENAI_BASE_URL=
+```
+
+## Key points
+
+- Install the `openai` SDK and `python-dotenv`.
+- Store your API key in `.env`, not directly in source code.
+- Add `.env` to `.gitignore`.
+- Initialize the client once and reuse it.
+- Use a model and endpoint supported by your API account or provider.
+- Never share your API key or publish it in a notebook.
